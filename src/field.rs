@@ -97,7 +97,7 @@ impl Field {
 
         true
     }
-    
+
     pub fn get_cell_color(&self, x: usize, y: usize) -> Color {
         match self.rows[y].cells[x].typ {
             Some(t) => t.into(),
