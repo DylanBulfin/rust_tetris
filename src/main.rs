@@ -1,6 +1,6 @@
 use std::time::Duration;
 
-use field::{Field, FIELD_HEIGHT, FIELD_VIS_HEIGHT, FIELD_WIDTH};
+use field::{Field, FIELD_HEIGHT, FIELD_VIS_HEIGHT, FIELD_VIS_WIDTH, FIELD_WIDTH};
 use sdl2::{
     event::Event, keyboard::Keycode, pixels::Color, rect::Rect, render::Canvas, video::Window,
 };
@@ -10,13 +10,50 @@ mod rotations;
 
 fn draw_field(field: &Field, canvas: &mut Canvas<Window>) -> Result<(), String> {
     for y in 0..FIELD_VIS_HEIGHT {
-        for x in 0..FIELD_WIDTH {
-            canvas.set_draw_color(field.get_cell_color(x, y + 2));
+        for x in 0..FIELD_VIS_WIDTH {
+            canvas.set_draw_color(field.get_cell_color(x + 2, y + 2));
             canvas.fill_rect(Rect::new(x as i32 * 50, y as i32 * 50, 50, 50))?;
         }
     }
 
     Ok(())
+}
+
+fn process_keycode(kc: Keycode, field: &mut Field) {
+    match kc {
+        Keycode::Up => field.piece_up(),
+        Keycode::Down => field.piece_down(),
+        Keycode::Right => field.piece_right(),
+        Keycode::Left => field.piece_left(),
+        Keycode::Space => {
+            field.hard_drop();
+        }
+        Keycode::Return => {
+            field.lock_piece();
+        }
+        Keycode::X => {
+            field.rotate_right();
+        }
+        Keycode::Z => {
+            field.rotate_left();
+        }
+        Keycode::O => {
+            field.spawn_piece(field::PieceType::O);
+        }
+        Keycode::I => {
+            field.spawn_piece(field::PieceType::I);
+        }
+        Keycode::J => {
+            field.spawn_piece(field::PieceType::J);
+        }
+        Keycode::L => {
+            field.spawn_piece(field::PieceType::L);
+        }
+        Keycode::T => {
+            field.spawn_piece(field::PieceType::T);
+        }
+        _ => return,
+    }
 }
 
 fn main() -> Result<(), String> {
@@ -46,17 +83,8 @@ fn main() -> Result<(), String> {
                     ..
                 } => break 'running,
                 Event::KeyDown {
-                    keycode: Some(Keycode::Down),
-                    ..
-                } => field.piece_down(),
-                Event::KeyDown {
-                    keycode: Some(Keycode::Left),
-                    ..
-                } => field.piece_left(),
-                Event::KeyDown {
-                    keycode: Some(Keycode::Right),
-                    ..
-                } => field.piece_right(),
+                    keycode: Some(kc), ..
+                } => process_keycode(kc, &mut field),
                 _ => {}
             }
         }
