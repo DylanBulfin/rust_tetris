@@ -1,6 +1,6 @@
 use std::time::Duration;
 
-use field::{Field, FIELD_HEIGHT, FIELD_VIS_HEIGHT, FIELD_VIS_WIDTH, FIELD_WIDTH};
+use field::{Field, FIELD_VIS_HEIGHT, FIELD_VIS_WIDTH};
 use sdl2::{
     event::Event, keyboard::Keycode, pixels::Color, rect::Rect, render::Canvas, video::Window,
 };

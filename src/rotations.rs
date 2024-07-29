@@ -29,7 +29,7 @@ pub fn l_coords(rot: RotationState) -> [(usize, usize); 4] {
     }
 }
 
-pub fn o_coords(rot: RotationState) -> [(usize, usize); 4] {
+pub fn o_coords(_: RotationState) -> [(usize, usize); 4] {
     [(0, 1), (1, 1), (0, 2), (1, 2)]
 }
 
@@ -80,14 +80,18 @@ pub fn get_wallkicks(
             (RotationState::Flip, RotationState::Right) => {
                 [(0, 0), (1, 0), (-2, 0), (1, 2), (-2, -1)]
             }
-            (RotationState::Flip, RotationState::Left) => [(0, 0), (2, 0), (-1, 0), (2, -1), (-1, 2)],
+            (RotationState::Flip, RotationState::Left) => {
+                [(0, 0), (2, 0), (-1, 0), (2, -1), (-1, 2)]
+            }
             (RotationState::Left, RotationState::Flip) => {
                 [(0, 0), (-2, 0), (1, 0), (-2, 1), (1, -2)]
             }
             (RotationState::Left, RotationState::None) => {
                 [(0, 0), (1, 0), (-2, 0), (1, 2), (-2, -1)]
             }
-            (RotationState::None, RotationState::Left) => [(0, 0), (-1, 0), (2, 0), (-1, -2), (2, 1)],
+            (RotationState::None, RotationState::Left) => {
+                [(0, 0), (-1, 0), (2, 0), (-1, -2), (2, 1)]
+            }
             _ => panic!("Attempting to get wallkick for impossible rotation"),
         },
         _ => match (rot, new_rot) {

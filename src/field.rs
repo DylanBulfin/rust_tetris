@@ -1,4 +1,3 @@
-use std::ops::Deref;
 
 use rand::random;
 use sdl2::pixels::Color;
@@ -87,6 +86,12 @@ pub struct Piece {
 }
 
 #[derive(Clone, Copy)]
+pub struct Ghost {
+    x: usize,
+    y: usize,
+}
+
+#[derive(Clone, Copy)]
 pub struct Cell {
     typ: Option<PieceType>,
 }
@@ -100,6 +105,7 @@ pub struct Row {
 pub struct Field {
     rows: [Row; 22],
     piece: Piece,
+    ghost: Ghost,
 }
 
 impl Field {
@@ -111,6 +117,7 @@ impl Field {
                 typ: PieceType::I,
                 rot: RotationState::None,
             },
+            ghost: Ghost { x: 0, y: 0 },
             rows: [Row {
                 cells: [Cell { typ: None }; 12],
             }; 22],
@@ -121,21 +128,29 @@ impl Field {
         //TODO change how the piece is generated
         let typ = PieceType::from(random::<u32>() % 7);
 
-        self.try_place_piece(5, 5, typ, RotationState::None)
+        self.try_place_piece(Piece {
+            x: 5,
+            y: 5,
+            typ,
+            rot: RotationState::None,
+        })
     }
 
     pub fn spawn_piece(&mut self, typ: PieceType) -> bool {
         println!("Remove this later");
-        self.try_place_piece(5, 5, typ, RotationState::None)
+        self.try_place_piece(Piece {
+            x: 5,
+            y: 5,
+            typ,
+            rot: RotationState::None,
+        })
     }
 
-    pub fn hard_drop(&mut self) -> bool{
-        while self.try_place_piece(
-            self.piece.x,
-            self.piece.y + 1,
-            self.piece.typ,
-            self.piece.rot,
-        ) {}
+    pub fn hard_drop(&mut self) -> bool {
+        while self.try_place_piece(Piece {
+            y: self.piece.y + 1,
+            ..self.piece
+        }) {}
 
         self.lock_piece()
     }
@@ -148,20 +163,45 @@ impl Field {
         self.next_piece()
     }
 
-    fn try_place_piece(&mut self, x: usize, y: usize, typ: PieceType, rot: RotationState) -> bool {
-        for (r, c) in get_coords(typ, rot) {
-            if x + c >= FIELD_WIDTH
-                || y + r >= FIELD_HEIGHT
-                || x + c < 2
-                || self.rows[y + r].cells[x + c].typ.is_some()
+    fn can_place_piece(&mut self, pc: Piece) -> bool {
+        for (r, c) in get_coords(pc.typ, pc.rot) {
+            if pc.x + c >= FIELD_WIDTH
+                || pc.y + r >= FIELD_HEIGHT
+                || pc.x + c < 2
+                || self.rows[pc.y + r].cells[pc.x + c].typ.is_some()
             {
                 return false;
             }
         }
 
-        self.piece = Piece { x, y, typ, rot };
-
         true
+    }
+
+    fn update_ghost(&mut self) {
+        let mut piece = self.piece;
+
+        loop {
+            if self.can_place_piece(piece) {
+                self.ghost.x = piece.x;
+                self.ghost.y = piece.y;
+                piece = Piece {
+                    y: piece.y + 1,
+                    ..piece
+                }
+            } else {
+                break;
+            }
+        }
+    }
+
+    fn try_place_piece(&mut self, pc: Piece) -> bool {
+        if self.can_place_piece(pc) {
+            self.piece = pc;
+            self.update_ghost();
+            true
+        } else {
+            false
+        }
     }
 
     pub fn get_cell_color(&self, x: usize, y: usize) -> Color {
@@ -174,6 +214,12 @@ impl Field {
                         .contains(&(y - self.piece.y, x - self.piece.x))
                 {
                     self.piece.typ.into()
+                } else if x >= self.ghost.x
+                    && y >= self.ghost.y
+                    && get_coords(self.piece.typ, self.piece.rot)
+                        .contains(&(y - self.ghost.y, x - self.ghost.x))
+                {
+                    Color::WHITE
                 } else {
                     Color::BLACK
                 }
@@ -182,39 +228,31 @@ impl Field {
     }
 
     pub fn piece_up(&mut self) {
-        self.try_place_piece(
-            self.piece.x,
-            self.piece.y.saturating_sub(1),
-            self.piece.typ,
-            self.piece.rot,
-        );
+        self.try_place_piece(Piece {
+            y: self.piece.y.saturating_sub(1),
+            ..self.piece
+        });
     }
 
     pub fn piece_down(&mut self) {
-        self.try_place_piece(
-            self.piece.x,
-            self.piece.y + 1,
-            self.piece.typ,
-            self.piece.rot,
-        );
+        self.try_place_piece(Piece {
+            y: self.piece.y + 1,
+            ..self.piece
+        });
     }
 
     pub fn piece_left(&mut self) {
-        self.try_place_piece(
-            self.piece.x.saturating_sub(1),
-            self.piece.y,
-            self.piece.typ,
-            self.piece.rot,
-        );
+        self.try_place_piece(Piece {
+            x: self.piece.x.saturating_sub(1),
+            ..self.piece
+        });
     }
 
     pub fn piece_right(&mut self) {
-        self.try_place_piece(
-            self.piece.x + 1,
-            self.piece.y,
-            self.piece.typ,
-            self.piece.rot,
-        );
+        self.try_place_piece(Piece {
+            x: self.piece.x + 1,
+            ..self.piece
+        });
     }
 
     pub fn rotate_right(&mut self) {
@@ -224,12 +262,12 @@ impl Field {
 
             if newx >= 0
                 && newy >= 0
-                && self.try_place_piece(
-                    newx as usize,
-                    newy as usize,
-                    self.piece.typ,
-                    self.piece.rot.right(),
-                )
+                && self.try_place_piece(Piece {
+                    x: newx as usize,
+                    y: newy as usize,
+                    typ: self.piece.typ,
+                    rot: self.piece.rot.right(),
+                })
             {
                 return;
             }
@@ -243,12 +281,12 @@ impl Field {
 
             if newx > 0
                 && newy > 0
-                && self.try_place_piece(
-                    newx as usize,
-                    newy as usize,
-                    self.piece.typ,
-                    self.piece.rot.left(),
-                )
+                && self.try_place_piece(Piece {
+                    x: newx as usize,
+                    y: newy as usize,
+                    typ: self.piece.typ,
+                    rot: self.piece.rot.left(),
+                })
             {
                 return;
             }
