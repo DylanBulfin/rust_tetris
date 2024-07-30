@@ -1,4 +1,3 @@
-
 use rand::random;
 use sdl2::pixels::Color;
 
@@ -124,7 +123,7 @@ impl Field {
         }
     }
 
-    fn next_piece(&mut self) -> bool {
+    pub fn next_piece(&mut self) -> bool {
         //TODO change how the piece is generated
         let typ = PieceType::from(random::<u32>() % 7);
 
@@ -146,13 +145,15 @@ impl Field {
         })
     }
 
-    pub fn hard_drop(&mut self) -> bool {
+    pub fn drop(&mut self, hardly: bool) {
         while self.try_place_piece(Piece {
             y: self.piece.y + 1,
             ..self.piece
         }) {}
 
-        self.lock_piece()
+        if hardly {
+            self.lock_piece();
+        }
     }
 
     pub fn lock_piece(&mut self) -> bool {
@@ -248,11 +249,25 @@ impl Field {
         });
     }
 
+    pub fn snap_left(&mut self) {
+        while self.try_place_piece(Piece {
+            x: self.piece.x.saturating_sub(1),
+            ..self.piece
+        }) {}
+    }
+
     pub fn piece_right(&mut self) {
         self.try_place_piece(Piece {
             x: self.piece.x + 1,
             ..self.piece
         });
+    }
+
+    pub fn snap_right(&mut self) {
+        while self.try_place_piece(Piece {
+            x: self.piece.x + 1,
+            ..self.piece
+        }) {}
     }
 
     pub fn rotate_right(&mut self) {
