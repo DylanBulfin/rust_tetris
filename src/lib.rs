@@ -80,7 +80,7 @@ pub fn run() -> Result<(), MyErr> {
     let video_subsystem = sdl_context.video()?;
 
     let window = video_subsystem
-        .window("tet.rs", 500, 1000)
+        .window("tet.rs", 500, 1100)
         .position_centered()
         .always_on_top()
         .build()
@@ -115,7 +115,6 @@ pub fn run() -> Result<(), MyErr> {
                         ..
                     } => {
                         process_keycode(kc, true, &mut field).map(|e| keys.update(e, &mut field));
-                        println!("Shit");
                     }
                     Event::KeyUp {
                         keycode: Some(kc),

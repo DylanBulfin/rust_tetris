@@ -53,7 +53,7 @@ impl KeyState {
                 && SystemTime::now()
                     .duration_since(st)
                     .expect("Something messed up")
-                    > Duration::from_millis(100)
+                    > Duration::from_millis(150)
             {
                 field.snap_left();
             }
@@ -63,7 +63,7 @@ impl KeyState {
                 && SystemTime::now()
                     .duration_since(st)
                     .expect("Something messed up")
-                    > Duration::from_millis(100)
+                    > Duration::from_millis(150)
             {
                 field.snap_right();
             }
@@ -74,28 +74,56 @@ impl KeyState {
         match event.key {
             Key::Left => {
                 self.left = event.press;
-                field.piece_left();
-                self.left_press = if event.press {
-                    Some(SystemTime::now())
+                if event.press {
+                    self.left_press = Some(SystemTime::now());
+                    field.piece_left();
                 } else {
-                    None
+                    self.left_press = None;
                 }
             }
             Key::Right => {
                 self.right = event.press;
-                field.piece_right();
-                self.right_press = if event.press {
-                    Some(SystemTime::now())
+                if event.press {
+                    self.right_press = Some(SystemTime::now());
+                    field.piece_right();
                 } else {
-                    None
+                    self.right_press = None;
                 }
             }
-            Key::HDrop => field.drop(true),
-            Key::SDrop => field.drop(false),
-            Key::RRot => field.rotate_right(),
-            Key::LRot => field.rotate_left(),
+            Key::HDrop => {
+                if event.press {
+                    field.drop(true)
+                } else {
+                    ()
+                }
+            }
+            Key::SDrop => {
+                if event.press {
+                    field.drop(false)
+                } else {
+                    ()
+                }
+            }
+            Key::RRot => {
+                if event.press {
+                    field.rotate_right()
+                } else {
+                    ()
+                }
+            }
+            Key::LRot => {
+                if event.press {
+                    field.rotate_left()
+                } else {
+                    ()
+                }
+            }
             Key::Hold => {
-                field.next_piece();
+                if event.press {
+                    field.next_piece();
+                } else {
+                    ()
+                };
             }
         }
     }

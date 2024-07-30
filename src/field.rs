@@ -156,10 +156,31 @@ impl Field {
         }
     }
 
-    pub fn lock_piece(&mut self) -> bool {
+    fn remove_line(&mut self, i: usize) {
+        for j in (1..i + 1).rev() {
+            self.rows[j] = self.rows[j - 1]
+        }
+    }
+
+    fn check_clears(&mut self) {
+        let mut lines = Vec::new();
+        for (i, row) in self.rows.iter().enumerate() {
+            if row.cells[2..].iter().filter(|c| c.typ.is_none()).count() == 0 {
+                lines.push(i);
+            }
+        }
+
+        for i in lines {
+            self.remove_line(i);
+        }
+    }
+
+    fn lock_piece(&mut self) -> bool {
         for (r, c) in get_coords(self.piece.typ, self.piece.rot) {
             self.rows[self.piece.y + r].cells[self.piece.x + c].typ = Some(self.piece.typ)
         }
+
+        self.check_clears();
 
         self.next_piece()
     }
@@ -250,7 +271,7 @@ impl Field {
     }
 
     pub fn snap_left(&mut self) {
-        while self.try_place_piece(Piece {
+        while self.piece.x > 0 && self.try_place_piece(Piece {
             x: self.piece.x.saturating_sub(1),
             ..self.piece
         }) {}
