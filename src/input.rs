@@ -23,12 +23,6 @@ pub struct KeyEvent {
     pub(crate) press: bool,
 }
 
-impl KeyEvent {
-    pub fn new(key: Key, press: bool) -> Self {
-        Self { key, press }
-    }
-}
-
 pub struct KeyState {
     left: bool,
     right: bool,
@@ -120,7 +114,7 @@ impl KeyState {
             }
             Key::Hold => {
                 if event.press {
-                    field.next_piece();
+                    field.hold();
                 } else {
                     ()
                 };

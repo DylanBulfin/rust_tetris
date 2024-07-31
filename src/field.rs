@@ -1,4 +1,4 @@
-use rand::random;
+use rand::{random, rngs::ThreadRng, seq::SliceRandom, thread_rng};
 use sdl2::pixels::Color;
 
 use crate::rotations::{get_coords, get_wallkicks};
@@ -101,10 +101,48 @@ pub struct Row {
 }
 
 #[derive(Clone, Copy)]
+pub struct Bag {
+    index: usize,
+    pieces: [PieceType; 7],
+}
+
+impl Bag {
+    fn pop(&mut self) -> Option<PieceType> {
+        if self.index < 7 {
+            self.index += 1;
+            Some(self.pieces[self.index - 1])
+        } else {
+            None
+        }
+    }
+
+    fn peek(&self) -> Option<PieceType> {
+        if self.index < 7 {
+            Some(self.pieces[self.index])
+        } else {
+            None
+        }
+    }
+}
+
+fn generate_bag() -> Bag {
+    let mut arr = [0, 1, 2, 3, 4, 5, 6];
+    arr.shuffle(&mut thread_rng());
+    Bag {
+        pieces: arr.map(|i| PieceType::from(i)),
+        index: 0,
+    }
+}
+
+// #[derive(Clone, Copy)]
 pub struct Field {
     rows: [Row; 22],
     piece: Piece,
     ghost: Ghost,
+    hold: Option<PieceType>,
+    can_hold: bool,
+    bag: Bag,
+    next_bag: Bag,
 }
 
 impl Field {
@@ -112,37 +150,68 @@ impl Field {
         Field {
             piece: Piece {
                 x: 5,
-                y: 5,
+                y: 0,
                 typ: PieceType::I,
                 rot: RotationState::None,
             },
+            can_hold: true,
+            hold: None,
             ghost: Ghost { x: 0, y: 0 },
             rows: [Row {
                 cells: [Cell { typ: None }; 12],
             }; 22],
+            bag: generate_bag(),
+            next_bag: generate_bag(),
         }
     }
 
-    pub fn next_piece(&mut self) -> bool {
-        //TODO change how the piece is generated
-        let typ = PieceType::from(random::<u32>() % 7);
-
-        self.try_place_piece(Piece {
-            x: 5,
-            y: 5,
-            typ,
-            rot: RotationState::None,
-        })
+    pub fn get_next_piece(&mut self) -> PieceType {
+        match self.bag.peek() {
+            Some(p) => p,
+            None => {
+                self.bag = self.next_bag;
+                self.next_bag = generate_bag();
+                self.bag.peek().expect("next_bag is empty")
+            }
+        }
     }
 
-    pub fn spawn_piece(&mut self, typ: PieceType) -> bool {
-        println!("Remove this later");
-        self.try_place_piece(Piece {
+    pub fn get_hold_piece(&self) -> Option<PieceType> {
+        self.hold
+    }
+
+    pub fn next_piece(&mut self) {
+        let typ: PieceType;
+
+        match self.bag.pop() {
+            Some(p) => typ = p,
+            None => {
+                self.bag = self.next_bag;
+                self.next_bag = generate_bag();
+                typ = self.bag.pop().expect("next_bag is empty");
+            }
+        }
+
+        if self.try_place_piece(Piece {
             x: 5,
-            y: 5,
+            y: 0,
             typ,
             rot: RotationState::None,
-        })
+        }) {
+            self.can_hold = true;
+        }
+    }
+
+    pub fn spawn_piece(&mut self, typ: PieceType) {
+        self.can_hold = true;
+        if self.try_place_piece(Piece {
+            x: 5,
+            y: 0,
+            typ,
+            rot: RotationState::None,
+        }) {
+            self.can_hold = true;
+        }
     }
 
     pub fn drop(&mut self, hardly: bool) {
@@ -175,7 +244,7 @@ impl Field {
         }
     }
 
-    fn lock_piece(&mut self) -> bool {
+    fn lock_piece(&mut self) {
         for (r, c) in get_coords(self.piece.typ, self.piece.rot) {
             self.rows[self.piece.y + r].cells[self.piece.x + c].typ = Some(self.piece.typ)
         }
@@ -271,10 +340,12 @@ impl Field {
     }
 
     pub fn snap_left(&mut self) {
-        while self.piece.x > 0 && self.try_place_piece(Piece {
-            x: self.piece.x.saturating_sub(1),
-            ..self.piece
-        }) {}
+        while self.piece.x > 0
+            && self.try_place_piece(Piece {
+                x: self.piece.x.saturating_sub(1),
+                ..self.piece
+            })
+        {}
     }
 
     pub fn piece_right(&mut self) {
@@ -296,6 +367,10 @@ impl Field {
             let newx = self.piece.x as i32 + x;
             let newy = self.piece.y as i32 + y;
 
+            if (x, y) != (0, 0) {
+                println!("wallkick");
+            }
+
             if newx >= 0
                 && newy >= 0
                 && self.try_place_piece(Piece {
@@ -315,8 +390,15 @@ impl Field {
             let newx = self.piece.x as i32 + x;
             let newy = self.piece.y as i32 + y;
 
-            if newx > 0
-                && newy > 0
+            if (x, y) != (0, 0) {
+                println!(
+                    "wallkick {} | {} | {} | {}",
+                    self.piece.x, self.piece.y, newx, newy
+                );
+            }
+
+            if newx >= 0
+                && newy >= 0
                 && self.try_place_piece(Piece {
                     x: newx as usize,
                     y: newy as usize,
@@ -325,6 +407,25 @@ impl Field {
                 })
             {
                 return;
+            }
+        }
+    }
+
+    pub fn can_hold(&self) -> bool {
+        self.can_hold
+    }
+
+    pub fn hold(&mut self) {
+        match &self.hold {
+            Some(p) => {
+                let new_pc = *p;
+                self.hold = Some(self.piece.typ);
+                self.spawn_piece(new_pc);
+                self.can_hold = false;
+            }
+            None => {
+                self.hold = Some(self.piece.typ);
+                self.next_piece();
             }
         }
     }

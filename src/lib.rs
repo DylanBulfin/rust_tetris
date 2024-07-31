@@ -4,8 +4,9 @@ use std::{
     time::{Duration, SystemTime},
 };
 
-use field::{Field, PieceType, FIELD_VIS_HEIGHT, FIELD_VIS_WIDTH};
+use field::{Field, PieceType, RotationState, FIELD_VIS_HEIGHT, FIELD_VIS_WIDTH};
 use input::{Key, KeyEvent, KeyState};
+use rotations::get_coords;
 use sdl2::{
     event::Event, keyboard::Keycode, pixels::Color, rect::Rect, render::Canvas, video::Window,
 };
@@ -33,11 +34,37 @@ impl Display for MyErr {
     }
 }
 
-fn draw_field(field: &Field, canvas: &mut Canvas<Window>) -> Result<(), MyErr> {
+fn draw_field(field: &mut Field, canvas: &mut Canvas<Window>) -> Result<(), MyErr> {
+    canvas.set_draw_color(Color::BLACK);
+    canvas.clear();
+
+    canvas.set_draw_color(Color::GRAY);
+    canvas.fill_rect(Rect::new(0, 0, 500, 150))?;
+
+    let hold = field.get_hold_piece();
+    let next = field.get_next_piece();
+    for y in 0..2 {
+        for x in 0..4 {
+            if hold.is_some() && get_coords(hold.unwrap(), RotationState::None).contains(&(y, x)) {
+                let color = if field.can_hold() {
+                    hold.unwrap().into()
+                } else {
+                    Color::BLACK
+                };
+                canvas.set_draw_color::<Color>(color);
+                canvas.fill_rect(Rect::new(x as i32 * 50, y as i32 * 50, 50, 50))?;
+            }
+            if get_coords(next, RotationState::None).contains(&(y, x)) {
+                canvas.set_draw_color::<Color>(next.into());
+                canvas.fill_rect(Rect::new(300 + x as i32 * 50, y as i32 * 50, 50, 50))?;
+            }
+        }
+    }
+
     for y in 0..FIELD_VIS_HEIGHT {
         for x in 0..FIELD_VIS_WIDTH {
             canvas.set_draw_color(field.get_cell_color(x + 2, y + 2));
-            canvas.fill_rect(Rect::new(x as i32 * 50, y as i32 * 50, 50, 50))?;
+            canvas.fill_rect(Rect::new(x as i32 * 50, 150 + y as i32 * 50, 50, 50))?;
         }
     }
 
@@ -70,7 +97,10 @@ fn process_keycode(kc: Keycode, press: bool, field: &mut Field) -> Option<KeyEve
             key: Key::LRot,
             press,
         }),
-
+        Keycode::LShift => Some(KeyEvent {
+            key: Key::Hold,
+            press,
+        }),
         _ => None,
     }
 }
@@ -80,7 +110,7 @@ pub fn run() -> Result<(), MyErr> {
     let video_subsystem = sdl_context.video()?;
 
     let window = video_subsystem
-        .window("tet.rs", 500, 1100)
+        .window("tet.rs", 500, 1150)
         .position_centered()
         .always_on_top()
         .build()
@@ -133,7 +163,7 @@ pub fn run() -> Result<(), MyErr> {
         canvas.set_draw_color(Color::RGB(0, 255, 255));
         canvas.clear();
 
-        draw_field(&field, &mut canvas)?;
+        draw_field(&mut field, &mut canvas)?;
 
         canvas.present();
 
