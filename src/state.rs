@@ -1,7 +1,9 @@
-use rand::{random, rngs::ThreadRng, seq::SliceRandom, thread_rng};
+use rand::{seq::SliceRandom, thread_rng};
 use sdl2::pixels::Color;
 
-use crate::rotations::{get_coords, get_wallkicks};
+use crate::
+    rotations::{get_coords, get_wallkicks}
+;
 
 pub const FIELD_WIDTH: usize = 12;
 pub const FIELD_VIS_WIDTH: usize = 10;
@@ -135,7 +137,7 @@ fn generate_bag() -> Bag {
 }
 
 // #[derive(Clone, Copy)]
-pub struct Field {
+pub struct State {
     rows: [Row; 22],
     piece: Piece,
     ghost: Ghost,
@@ -145,9 +147,9 @@ pub struct Field {
     next_bag: Bag,
 }
 
-impl Field {
+impl State {
     pub fn new() -> Self {
-        Field {
+        State {
             piece: Piece {
                 x: 5,
                 y: 0,
@@ -318,14 +320,14 @@ impl Field {
         }
     }
 
-    pub fn piece_up(&mut self) {
+    pub fn _piece_up(&mut self) {
         self.try_place_piece(Piece {
             y: self.piece.y.saturating_sub(1),
             ..self.piece
         });
     }
 
-    pub fn piece_down(&mut self) {
+    pub fn _piece_down(&mut self) {
         self.try_place_piece(Piece {
             y: self.piece.y + 1,
             ..self.piece

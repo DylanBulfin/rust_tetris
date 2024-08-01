@@ -1,52 +1,63 @@
 use std::{
     fmt::Display,
+    io,
     thread::sleep,
     time::{Duration, SystemTime},
 };
 
-use field::{Field, PieceType, RotationState, FIELD_VIS_HEIGHT, FIELD_VIS_WIDTH};
+use config::{get_config, Config};
 use input::{Key, KeyEvent, KeyState};
 use rotations::get_coords;
 use sdl2::{
     event::Event, keyboard::Keycode, pixels::Color, rect::Rect, render::Canvas, video::Window,
 };
+use state::{RotationState, State, FIELD_VIS_HEIGHT, FIELD_VIS_WIDTH};
 
-mod field;
+mod config;
 mod input;
 mod rotations;
+mod state;
 
 #[derive(Debug)]
-pub enum MyErr {
+pub enum TetrErr {
     Str(String),
+    IOError(io::Error),
 }
 
-impl From<String> for MyErr {
+impl From<String> for TetrErr {
     fn from(value: String) -> Self {
-        MyErr::Str(value)
+        TetrErr::Str(value)
     }
 }
 
-impl Display for MyErr {
+impl From<io::Error> for TetrErr {
+    fn from(value: io::Error) -> Self {
+        TetrErr::IOError(value)
+    }
+}
+
+impl Display for TetrErr {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            MyErr::Str(s) => f.write_str(&s),
+            TetrErr::Str(s) => f.write_str(&s),
+            TetrErr::IOError(e) => f.write_fmt(format_args!("{}", e)),
         }
     }
 }
 
-fn draw_field(field: &mut Field, canvas: &mut Canvas<Window>) -> Result<(), MyErr> {
+fn draw_field(state: &mut State, canvas: &mut Canvas<Window>) -> Result<(), TetrErr> {
     canvas.set_draw_color(Color::BLACK);
     canvas.clear();
 
     canvas.set_draw_color(Color::GRAY);
     canvas.fill_rect(Rect::new(0, 0, 500, 150))?;
 
-    let hold = field.get_hold_piece();
-    let next = field.get_next_piece();
+    let hold = state.get_hold_piece();
+    let next = state.get_next_piece();
     for y in 0..2 {
         for x in 0..4 {
             if hold.is_some() && get_coords(hold.unwrap(), RotationState::None).contains(&(y, x)) {
-                let color = if field.can_hold() {
+                let color = if state.can_hold() {
                     hold.unwrap().into()
                 } else {
                     Color::BLACK
@@ -63,7 +74,7 @@ fn draw_field(field: &mut Field, canvas: &mut Canvas<Window>) -> Result<(), MyEr
 
     for y in 0..FIELD_VIS_HEIGHT {
         for x in 0..FIELD_VIS_WIDTH {
-            canvas.set_draw_color(field.get_cell_color(x + 2, y + 2));
+            canvas.set_draw_color(state.get_cell_color(x + 2, y + 2));
             canvas.fill_rect(Rect::new(x as i32 * 50, 150 + y as i32 * 50, 50, 50))?;
         }
     }
@@ -71,41 +82,27 @@ fn draw_field(field: &mut Field, canvas: &mut Canvas<Window>) -> Result<(), MyEr
     Ok(())
 }
 
-fn process_keycode(kc: Keycode, press: bool, field: &mut Field) -> Option<KeyEvent> {
-    match kc {
-        Keycode::Up => Some(KeyEvent {
-            key: Key::HDrop,
-            press,
-        }),
-        Keycode::Down => Some(KeyEvent {
-            key: Key::SDrop,
-            press,
-        }),
-        Keycode::Right => Some(KeyEvent {
-            key: Key::Right,
-            press,
-        }),
-        Keycode::Left => Some(KeyEvent {
-            key: Key::Left,
-            press,
-        }),
-        Keycode::X => Some(KeyEvent {
-            key: Key::RRot,
-            press,
-        }),
-        Keycode::Z => Some(KeyEvent {
-            key: Key::LRot,
-            press,
-        }),
-        Keycode::LShift => Some(KeyEvent {
-            key: Key::Hold,
-            press,
-        }),
-        _ => None,
+fn key_from_keycode(kc: Keycode, config: &Config) -> Option<Key> {
+    if kc == config.keys().left() {
+        Some(Key::Left)
+    } else if kc == config.keys().right() {
+        Some(Key::Right)
+    } else if kc == config.keys().sdrop() {
+        Some(Key::SDrop)
+    } else if kc == config.keys().hdrop() {
+        Some(Key::HDrop)
+    } else if kc == config.keys().rrot() {
+        Some(Key::RRot)
+    } else if kc == config.keys().lrot() {
+        Some(Key::LRot)
+    } else if kc == config.keys().hold() {
+        Some(Key::Hold)
+    } else {
+        None
     }
 }
 
-pub fn run() -> Result<(), MyErr> {
+pub fn run() -> Result<(), TetrErr> {
     let sdl_context = sdl2::init()?;
     let video_subsystem = sdl_context.video()?;
 
@@ -120,8 +117,9 @@ pub fn run() -> Result<(), MyErr> {
         .into_canvas()
         .build()
         .expect("Unable to create canvas");
-    let mut field = Field::new();
-    let mut keys = KeyState::new();
+    let config = get_config();
+    let mut state = State::new();
+    let mut keys = KeyState::new(config);
 
     let mut event_pump = sdl_context.event_pump()?;
     'running: loop {
@@ -143,27 +141,41 @@ pub fn run() -> Result<(), MyErr> {
                         keycode: Some(kc),
                         repeat: false,
                         ..
-                    } => {
-                        process_keycode(kc, true, &mut field).map(|e| keys.update(e, &mut field));
-                    }
+                    } => match key_from_keycode(kc, &config) {
+                        Some(k) => keys.update(
+                            KeyEvent {
+                                key: k,
+                                press: true,
+                            },
+                            &mut state,
+                        ),
+                        None => (),
+                    },
                     Event::KeyUp {
                         keycode: Some(kc),
                         repeat: false,
                         ..
-                    } => {
-                        process_keycode(kc, false, &mut field).map(|e| keys.update(e, &mut field));
-                    }
+                    } => match key_from_keycode(kc, &config) {
+                        Some(k) => keys.update(
+                            KeyEvent {
+                                key: k,
+                                press: false,
+                            },
+                            &mut state,
+                        ),
+                        None => (),
+                    },
                     _ => (),
                 };
             }
         }
 
-        keys.handle_dirs(&mut field);
+        keys.handle_special(&mut state);
 
         canvas.set_draw_color(Color::RGB(0, 255, 255));
         canvas.clear();
 
-        draw_field(&mut field, &mut canvas)?;
+        draw_field(&mut state, &mut canvas)?;
 
         canvas.present();
 
@@ -177,5 +189,5 @@ pub fn run() -> Result<(), MyErr> {
         }
     }
 
-    Err(MyErr::Str("Broke".to_string()))
+    Err(TetrErr::Str("Broke".to_string()))
 }

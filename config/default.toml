@@ -1,0 +1,12 @@
+# dir_delay is how long you have to hold a direction before
+# the piece snaps to the edge of the grid
+dir_delay = 150
+
+[keys]
+left = "left"
+right = "right"
+sdrop = "down" # Soft drop
+hdrop = "up" # Hard drop
+hold = "lshift"
+lrot = "z" # Rotate left
+rrot = "x" # Rotate right
