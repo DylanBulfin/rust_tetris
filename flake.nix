@@ -12,7 +12,7 @@
 
 
       # Change below sections, leave the rest alone
-      project = "tetris";
+      project = "tetrs";
       deps = with systemPkgs;[
         SDL2
       ];

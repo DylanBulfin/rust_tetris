@@ -1,7 +1,7 @@
-use tetris::TetrErr;
+use tetrs::TetrErr;
 
 
 fn main() -> Result<(), TetrErr> {
     //parse config here 
-    tetris::run()
+    tetrs::run()
 }

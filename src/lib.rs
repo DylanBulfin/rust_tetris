@@ -6,6 +6,7 @@ use std::{
 };
 
 use config::{get_config, Config};
+use homedir::GetHomeError;
 use input::{Key, KeyEvent, KeyState};
 use rotations::get_coords;
 use sdl2::{
@@ -22,6 +23,7 @@ mod state;
 pub enum TetrErr {
     Str(String),
     IOError(io::Error),
+    HomeError(GetHomeError)
 }
 
 impl From<String> for TetrErr {
@@ -36,11 +38,18 @@ impl From<io::Error> for TetrErr {
     }
 }
 
+impl From<GetHomeError> for TetrErr {
+    fn from(value: GetHomeError) -> Self {
+        TetrErr::HomeError(value)
+    }
+}
+
 impl Display for TetrErr {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             TetrErr::Str(s) => f.write_str(&s),
             TetrErr::IOError(e) => f.write_fmt(format_args!("{}", e)),
+            TetrErr::HomeError(e) => f.write_fmt(format_args!("{}", e)),
         }
     }
 }
@@ -117,7 +126,7 @@ pub fn run() -> Result<(), TetrErr> {
         .into_canvas()
         .build()
         .expect("Unable to create canvas");
-    let config = get_config();
+    let config = get_config()?;
     let mut state = State::new();
     let mut keys = KeyState::new(config);
 

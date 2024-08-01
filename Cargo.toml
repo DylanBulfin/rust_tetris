@@ -1,9 +1,10 @@
 [package]
-name = "tetris"
+name = "tetrs"
 version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+homedir = "0.3.3"
 rand = "0.8.5"
 sdl2 = "0.37.0"
 toml = "0.8.19"
