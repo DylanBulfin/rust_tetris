@@ -2,6 +2,7 @@
 # the piece snaps to the edge of the grid
 dir_delay = 150
 
+# keybindings below should correspond to SDL Keycodes
 [keys]
 left = "left"
 right = "right"

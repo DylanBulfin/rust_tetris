@@ -1,9 +1,7 @@
 use rand::{seq::SliceRandom, thread_rng};
 use sdl2::pixels::Color;
 
-use crate::
-    rotations::{get_coords, get_wallkicks}
-;
+use crate::rotations::{get_coords, get_wallkicks};
 
 pub const FIELD_WIDTH: usize = 12;
 pub const FIELD_VIS_WIDTH: usize = 10;
@@ -149,7 +147,7 @@ pub struct State {
 
 impl State {
     pub fn new() -> Self {
-        State {
+        let mut slf = State {
             piece: Piece {
                 x: 5,
                 y: 0,
@@ -164,7 +162,9 @@ impl State {
             }; 22],
             bag: generate_bag(),
             next_bag: generate_bag(),
-        }
+        };
+        slf.next_piece();
+        slf
     }
 
     pub fn get_next_piece(&mut self) -> PieceType {
