@@ -62,9 +62,9 @@ impl From<u32> for PieceType {
     }
 }
 
-impl Into<Color> for PieceType {
-    fn into(self) -> Color {
-        match self {
+impl From<PieceType> for Color {
+    fn from(val: PieceType) -> Self {
+        match val {
             PieceType::I => Color::RGB(0, 255, 255),
             PieceType::J => Color::BLUE,
             PieceType::L => Color::RGB(255, 128, 0),
@@ -129,7 +129,7 @@ fn generate_bag() -> Bag {
     let mut arr = [0, 1, 2, 3, 4, 5, 6];
     arr.shuffle(&mut thread_rng());
     Bag {
-        pieces: arr.map(|i| PieceType::from(i)),
+        pieces: arr.map(PieceType::from),
         index: 0,
     }
 }

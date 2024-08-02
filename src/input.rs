@@ -94,8 +94,6 @@ impl KeyState {
             Key::HDrop => {
                 if event.press {
                     state.drop(true)
-                } else {
-                    ()
                 }
             }
             Key::SDrop => {
@@ -109,23 +107,17 @@ impl KeyState {
             Key::RRot => {
                 if event.press {
                     state.rotate_right()
-                } else {
-                    ()
                 }
             }
             Key::LRot => {
                 if event.press {
                     state.rotate_left()
-                } else {
-                    ()
                 }
             }
             Key::Hold => {
                 if event.press {
                     state.hold();
-                } else {
-                    ()
-                };
+                }
             }
         }
     }

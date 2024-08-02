@@ -12,6 +12,9 @@
 - Soft drop is instantaneous, will change if and only if the above changes
 - Default controls are my preferred controls (up for hard drop, z/x for rotation, shift for hold)
 
+## Demo
+- https://youtu.be/pZjVrsYqs-w
+
 ## Installation
 ### Non-Nix(OS)
 - Ensure GNU `make`, `cmake`, and the `SDL2` library are installed

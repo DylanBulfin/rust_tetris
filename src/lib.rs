@@ -23,7 +23,7 @@ mod state;
 pub enum TetrErr {
     Str(String),
     IOError(io::Error),
-    HomeError(GetHomeError)
+    HomeError(GetHomeError),
 }
 
 impl From<String> for TetrErr {
@@ -47,7 +47,7 @@ impl From<GetHomeError> for TetrErr {
 impl Display for TetrErr {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            TetrErr::Str(s) => f.write_str(&s),
+            TetrErr::Str(s) => f.write_str(s),
             TetrErr::IOError(e) => f.write_fmt(format_args!("{}", e)),
             TetrErr::HomeError(e) => f.write_fmt(format_args!("{}", e)),
         }
@@ -150,30 +150,32 @@ pub fn run() -> Result<(), TetrErr> {
                         keycode: Some(kc),
                         repeat: false,
                         ..
-                    } => match key_from_keycode(kc, &config) {
-                        Some(k) => keys.update(
-                            KeyEvent {
-                                key: k,
-                                press: true,
-                            },
-                            &mut state,
-                        ),
-                        None => (),
-                    },
+                    } => {
+                        if let Some(k) = key_from_keycode(kc, &config) {
+                            keys.update(
+                                KeyEvent {
+                                    key: k,
+                                    press: true,
+                                },
+                                &mut state,
+                            )
+                        }
+                    }
                     Event::KeyUp {
                         keycode: Some(kc),
                         repeat: false,
                         ..
-                    } => match key_from_keycode(kc, &config) {
-                        Some(k) => keys.update(
-                            KeyEvent {
-                                key: k,
-                                press: false,
-                            },
-                            &mut state,
-                        ),
-                        None => (),
-                    },
+                    } => {
+                        if let Some(k) = key_from_keycode(kc, &config) {
+                            keys.update(
+                                KeyEvent {
+                                    key: k,
+                                    press: false,
+                                },
+                                &mut state,
+                            )
+                        }
+                    }
                     _ => (),
                 };
             }
@@ -188,13 +190,10 @@ pub fn run() -> Result<(), TetrErr> {
 
         canvas.present();
 
-        match SystemTime::now().duration_since(timer) {
-            Ok(d) => {
-                if d > Duration::new(0, 1_000_000_000) {
-                    sleep(Duration::new(0, 1_000_000_000u32 / 60) - d)
-                }
+        if let Ok(d) = SystemTime::now().duration_since(timer) {
+            if d > Duration::new(0, 1_000_000_000) {
+                sleep(Duration::new(0, 1_000_000_000u32 / 60) - d)
             }
-            Err(_) => (),
         }
     }
 
